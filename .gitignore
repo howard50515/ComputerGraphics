@@ -1,0 +1,35 @@
+# Build outputs
+build/
+out/
+Debug/
+Release/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Makefile
+
+# Visual Studio / VS Code caches
+.vs/
+.vscode/
+*.VC.db
+*.VC.opendb
+
+# Compiler/linker artifacts
+*.obj
+*.o
+*.pdb
+*.ilk
+*.idb
+*.exe
+*.dll
+*.lib
+*.exp
+
+# Logs
+*.log
+
+# Ignore example files
+examples/
