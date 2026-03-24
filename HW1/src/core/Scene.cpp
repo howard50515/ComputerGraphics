@@ -4,10 +4,15 @@
 
 namespace hw1 {
 
-Scene::Scene() : activeCameraIndex_(0) {}
+Scene::Scene() : nextObjectId_(0), activeCameraIndex_(0) {}
 
 void Scene::addObject(const std::shared_ptr<SceneObject>& obj) {
 	if (obj) {
+		if (obj->objectId() == SceneObject::kInvalidObjectId) {
+			obj->setObjectId(nextObjectId_++);
+		} else if (obj->objectId() >= nextObjectId_) {
+			nextObjectId_ = obj->objectId() + 1;
+		}
 		objects_.push_back(obj);
 	}
 }
@@ -40,6 +45,19 @@ void Scene::addLight(const Light& light) {
 
 const std::vector<std::shared_ptr<SceneObject>>& Scene::objects() const {
 	return objects_;
+}
+
+std::size_t Scene::objectCount() const {
+	return objects_.size();
+}
+
+std::shared_ptr<SceneObject> Scene::getObjectById(std::uint32_t id) const {
+	for (const auto& object : objects_) {
+		if (object && object->objectId() == id) {
+			return object;
+		}
+	}
+	return nullptr;
 }
 
 const std::vector<std::shared_ptr<Camera>>& Scene::cameras() const {

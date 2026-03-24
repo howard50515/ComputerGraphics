@@ -20,6 +20,17 @@ Matrix4x4 Transform::scale(const Vector3& s) {
 	return m;
 }
 
+Matrix4x4 Transform::shear(float xy, float xz, float yx, float yz, float zx, float zy) {
+	Matrix4x4 m = Matrix4x4::identity();
+	m.m[0][1] = xy;
+	m.m[0][2] = xz;
+	m.m[1][0] = yx;
+	m.m[1][2] = yz;
+	m.m[2][0] = zx;
+	m.m[2][1] = zy;
+	return m;
+}
+
 Matrix4x4 Transform::rotationX(float radians) {
 	Matrix4x4 m = Matrix4x4::identity();
 	const float c = std::cos(radians);

@@ -16,6 +16,21 @@ namespace hw1 {
 
 namespace {
 
+const char* StatusText(int statusCode) {
+	switch (statusCode) {
+	case 200:
+		return "OK";
+	case 400:
+		return "Bad Request";
+	case 404:
+		return "Not Found";
+	case 503:
+		return "Service Unavailable";
+	default:
+		return "Error";
+	}
+}
+
 #ifdef _WIN32
 bool sendAll(SOCKET socket, const std::uint8_t* data, std::size_t size) {
 	std::size_t totalSent = 0;
@@ -92,6 +107,20 @@ void WebServer::setRasterMs(float rasterMs) {
 
 void WebServer::setUploadMs(float uploadMs) {
 	latestUploadMs_.store(uploadMs);
+}
+
+void WebServer::bindScene(Scene* scene) {
+	window_.bindScene(scene);
+	controller_.bindScene(scene);
+}
+
+void WebServer::bindShadingMaterials(
+	const std::shared_ptr<Material>& flat,
+	const std::shared_ptr<Material>& gouraud,
+	const std::shared_ptr<Material>& phong,
+	const std::shared_ptr<Material>& unlit) {
+	window_.bindShadingMaterials(flat, gouraud, phong, unlit);
+	controller_.bindShadingMaterials(flat, gouraud, phong, unlit);
 }
 
 GUIWindow& WebServer::guiWindow() {
@@ -192,13 +221,13 @@ void WebServer::handleClient(std::uintptr_t clientSocket) {
 	const bool wantPerf = (reqStr.find("GET /perf") == 0);
 	const bool wantShading = (reqStr.find("GET /shading") == 0);
 	const bool wantSetShading = (reqStr.find("GET /set_shading?mode=") == 0);
+	const bool wantSetLightingSettings = (reqStr.find("GET /set_lighting_settings?") == 0);
 	const bool wantCamera = (reqStr.find("GET /camera") == 0);
 	const bool wantSetCamera = (reqStr.find("GET /set_camera?index=") == 0);
 	const bool wantObject = (reqStr.find("GET /object") == 0);
-	const bool wantSetObjectScale = (reqStr.find("GET /set_object_scale?value=") == 0);
+	const bool wantSetObjectProperty = (reqStr.find("GET /set_object_property?") == 0);
 	const bool wantSetCameraPosition = (reqStr.find("GET /set_camera_position?index=") == 0);
-	const bool wantSetLightPosition = (reqStr.find("GET /set_light_position?index=") == 0);
-	const bool wantSetLightColor = (reqStr.find("GET /set_light_color?index=") == 0);
+	const bool wantSetLight = (reqStr.find("GET /set_light?") == 0);
 	const bool wantRoot = (reqStr.find("GET / ") == 0 || reqStr.find("GET /index.html") == 0);
 	const bool wantShutdown = (reqStr.find("GET /shutdown") == 0);
 
@@ -294,24 +323,27 @@ void WebServer::handleClient(std::uintptr_t clientSocket) {
 	}
 
 	if (wantSetShading) {
-		std::string payload;
-		if (!window_.trySetShadingModeFromRequest(reqStr, payload)) {
-			const std::string body = "Invalid shading mode.";
-			const std::string response =
-				"HTTP/1.1 400 Bad Request\r\n"
-				"Content-Type: text/plain; charset=utf-8\r\n"
-				"Connection: close\r\n"
-				"Content-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body;
-			sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
-			return;
-		}
-
+		ControllerResult result;
+		controller_.handleSetShading(reqStr, result);
 		const std::string response =
-			"HTTP/1.1 200 OK\r\n"
-			"Content-Type: application/json; charset=utf-8\r\n"
+			"HTTP/1.1 " + std::to_string(result.statusCode) + " " + StatusText(result.statusCode) + "\r\n"
+			"Content-Type: " + result.contentType + "\r\n"
 			"Cache-Control: no-store\r\n"
 			"Connection: close\r\n"
-			"Content-Length: " + std::to_string(payload.size()) + "\r\n\r\n" + payload;
+			"Content-Length: " + std::to_string(result.payload.size()) + "\r\n\r\n" + result.payload;
+		sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
+		return;
+	}
+
+	if (wantSetLightingSettings) {
+		ControllerResult result;
+		controller_.handleSetLightingSettings(reqStr, result);
+		const std::string response =
+			"HTTP/1.1 " + std::to_string(result.statusCode) + " " + StatusText(result.statusCode) + "\r\n"
+			"Content-Type: " + result.contentType + "\r\n"
+			"Cache-Control: no-store\r\n"
+			"Connection: close\r\n"
+			"Content-Length: " + std::to_string(result.payload.size()) + "\r\n\r\n" + result.payload;
 		sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
 		return;
 	}
@@ -329,24 +361,14 @@ void WebServer::handleClient(std::uintptr_t clientSocket) {
 	}
 
 	if (wantSetCamera) {
-		std::string payload;
-		if (!window_.trySetCameraFromRequest(reqStr, payload)) {
-			const std::string body = "Invalid camera index.";
-			const std::string response =
-				"HTTP/1.1 400 Bad Request\r\n"
-				"Content-Type: text/plain; charset=utf-8\r\n"
-				"Connection: close\r\n"
-				"Content-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body;
-			sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
-			return;
-		}
-
+		ControllerResult result;
+		controller_.handleSetCamera(reqStr, result);
 		const std::string response =
-			"HTTP/1.1 200 OK\r\n"
-			"Content-Type: application/json; charset=utf-8\r\n"
+			"HTTP/1.1 " + std::to_string(result.statusCode) + " " + StatusText(result.statusCode) + "\r\n"
+			"Content-Type: " + result.contentType + "\r\n"
 			"Cache-Control: no-store\r\n"
 			"Connection: close\r\n"
-			"Content-Length: " + std::to_string(payload.size()) + "\r\n\r\n" + payload;
+			"Content-Length: " + std::to_string(result.payload.size()) + "\r\n\r\n" + result.payload;
 		sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
 		return;
 	}
@@ -363,94 +385,41 @@ void WebServer::handleClient(std::uintptr_t clientSocket) {
 		return;
 	}
 
-	if (wantSetObjectScale) {
-		std::string payload;
-		if (!window_.trySetObjectScaleFromRequest(reqStr, payload)) {
-			const std::string body = "Invalid object scale.";
-			const std::string response =
-				"HTTP/1.1 400 Bad Request\r\n"
-				"Content-Type: text/plain; charset=utf-8\r\n"
-				"Connection: close\r\n"
-				"Content-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body;
-			sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
-			return;
-		}
-
+	if (wantSetObjectProperty) {
+		ControllerResult result;
+		controller_.handleSetObjectProperty(reqStr, result);
 		const std::string response =
-			"HTTP/1.1 200 OK\r\n"
-			"Content-Type: application/json; charset=utf-8\r\n"
+			"HTTP/1.1 " + std::to_string(result.statusCode) + " " + StatusText(result.statusCode) + "\r\n"
+			"Content-Type: " + result.contentType + "\r\n"
 			"Cache-Control: no-store\r\n"
 			"Connection: close\r\n"
-			"Content-Length: " + std::to_string(payload.size()) + "\r\n\r\n" + payload;
+			"Content-Length: " + std::to_string(result.payload.size()) + "\r\n\r\n" + result.payload;
 		sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
 		return;
 	}
 
 	if (wantSetCameraPosition) {
-		std::string payload;
-		if (!window_.trySetCameraPositionFromRequest(reqStr, payload)) {
-			const std::string body = "Invalid camera position.";
-			const std::string response =
-				"HTTP/1.1 400 Bad Request\r\n"
-				"Content-Type: text/plain; charset=utf-8\r\n"
-				"Connection: close\r\n"
-				"Content-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body;
-			sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
-			return;
-		}
-
+		ControllerResult result;
+		controller_.handleSetCameraPosition(reqStr, result);
 		const std::string response =
-			"HTTP/1.1 200 OK\r\n"
-			"Content-Type: application/json; charset=utf-8\r\n"
+			"HTTP/1.1 " + std::to_string(result.statusCode) + " " + StatusText(result.statusCode) + "\r\n"
+			"Content-Type: " + result.contentType + "\r\n"
 			"Cache-Control: no-store\r\n"
 			"Connection: close\r\n"
-			"Content-Length: " + std::to_string(payload.size()) + "\r\n\r\n" + payload;
+			"Content-Length: " + std::to_string(result.payload.size()) + "\r\n\r\n" + result.payload;
 		sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
 		return;
 	}
 
-	if (wantSetLightPosition) {
-		std::string payload;
-		if (!window_.trySetLightPositionFromRequest(reqStr, payload)) {
-			const std::string body = "Invalid light position.";
-			const std::string response =
-				"HTTP/1.1 400 Bad Request\r\n"
-				"Content-Type: text/plain; charset=utf-8\r\n"
-				"Connection: close\r\n"
-				"Content-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body;
-			sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
-			return;
-		}
-
+	if (wantSetLight) {
+		ControllerResult result;
+		controller_.handleSetLight(reqStr, result);
 		const std::string response =
-			"HTTP/1.1 200 OK\r\n"
-			"Content-Type: application/json; charset=utf-8\r\n"
+			"HTTP/1.1 " + std::to_string(result.statusCode) + " " + StatusText(result.statusCode) + "\r\n"
+			"Content-Type: " + result.contentType + "\r\n"
 			"Cache-Control: no-store\r\n"
 			"Connection: close\r\n"
-			"Content-Length: " + std::to_string(payload.size()) + "\r\n\r\n" + payload;
-		sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
-		return;
-	}
-
-	if (wantSetLightColor) {
-		std::string payload;
-		if (!window_.trySetLightColorFromRequest(reqStr, payload)) {
-			const std::string body = "Invalid light color.";
-			const std::string response =
-				"HTTP/1.1 400 Bad Request\r\n"
-				"Content-Type: text/plain; charset=utf-8\r\n"
-				"Connection: close\r\n"
-				"Content-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body;
-			sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
-			return;
-		}
-
-		const std::string response =
-			"HTTP/1.1 200 OK\r\n"
-			"Content-Type: application/json; charset=utf-8\r\n"
-			"Cache-Control: no-store\r\n"
-			"Connection: close\r\n"
-			"Content-Length: " + std::to_string(payload.size()) + "\r\n\r\n" + payload;
+			"Content-Length: " + std::to_string(result.payload.size()) + "\r\n\r\n" + result.payload;
 		sendAll(client, reinterpret_cast<const std::uint8_t*>(response.data()), response.size());
 		return;
 	}

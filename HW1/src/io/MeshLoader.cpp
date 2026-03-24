@@ -17,21 +17,6 @@ namespace hw1 {
 
 namespace {
 
-Vertex ReadVertex(std::istream& input) {
-	float x = 0.0f;
-	float y = 0.0f;
-	float z = 0.0f;
-	float nx = 0.0f;
-	float ny = 0.0f;
-	float nz = 0.0f;
-
-	if (!(input >> x >> y >> z >> nx >> ny >> nz)) {
-		throw std::runtime_error("Failed to read vertex position/normal data.");
-	}
-
-	return Vertex(Vector3(x, y, z), Vector3(nx, ny, nz));
-}
-
 bool HasJsonExtension(const std::string& path) {
 	if (path.size() < 5) {
 		return false;
@@ -39,16 +24,6 @@ bool HasJsonExtension(const std::string& path) {
 
 	const std::string extension = path.substr(path.size() - 5);
 	return extension == ".json" || extension == ".JSON";
-}
-
-bool IsLikelyJson(const std::string& text) {
-	for (char ch : text) {
-		if (!std::isspace(static_cast<unsigned char>(ch))) {
-			return ch == '{';
-		}
-	}
-
-	return false;
 }
 
 size_t FindMatchingBracket(const std::string& text, size_t openPos) {
@@ -169,43 +144,11 @@ Mesh MeshLoader::loadFromFile(const std::string& path) {
 	buffer << input.rdbuf();
 	const std::string content = buffer.str();
 
-	if (HasJsonExtension(path) || IsLikelyJson(content)) {
-		return LoadJsonMesh(content, path);
+	if (!HasJsonExtension(path)) {
+		throw std::runtime_error("Only .json mesh files are supported: " + path);
 	}
 
-	std::istringstream textInput(content);
-
-	Mesh mesh;
-	std::string token;
-
-	while (textInput >> token) {
-		if (token != "Triangle") {
-			throw std::runtime_error("Invalid token in mesh file, expected 'Triangle'.");
-		}
-
-		float fr = 0.0f;
-		float fg = 0.0f;
-		float fb = 0.0f;
-		float br = 0.0f;
-		float bg = 0.0f;
-		float bb = 0.0f;
-
-		if (!(textInput >> fr >> fg >> fb >> br >> bg >> bb)) {
-			throw std::runtime_error("Failed to read triangle front/back colors.");
-		}
-
-		Triangle triangle;
-		triangle.frontColor = Color(fr, fg, fb);
-		triangle.backColor = Color(br, bg, bb);
-
-		triangle.v0 = ReadVertex(textInput);
-		triangle.v1 = ReadVertex(textInput);
-		triangle.v2 = ReadVertex(textInput);
-
-		mesh.addTriangle(triangle);
-	}
-
-	return mesh;
+	return LoadJsonMesh(content, path);
 }
 
 }  // namespace hw1

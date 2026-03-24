@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "config/LightingSettings.h"
 #include "math/MathUtils.h"
 
 namespace hw1 {
@@ -28,9 +29,10 @@ Color PhongMaterial::fragmentShader(const Fragment& fragment, const UniformConte
 		fragment.varyings.frontColor.r,
 		fragment.varyings.frontColor.g,
 		fragment.varyings.frontColor.b);
-	const float ambientStrength = 0.15f;
-	const float specularStrength = 0.35f;
-	const float shininess = 32.0f;
+	const LightingSettings& settings = GlobalLightingSettingsConst();
+	const float ambientStrength = settings.ambientStrength;
+	const float specularStrength = settings.specularStrength;
+	const float shininess = settings.shininess;
 
 	const Vector3 n = Normalize(fragment.varyings.normal);
 	const Vector3 viewDir = Normalize(ctx.scene.cameraPosition - fragment.varyings.worldPosition);

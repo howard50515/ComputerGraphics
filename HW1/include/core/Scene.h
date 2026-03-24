@@ -2,6 +2,7 @@
 
 // Stores the entire scene including all objects, lights, and the active camera.
 // Acts as the root container that the renderer reads from during rendering.
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -25,6 +26,8 @@ public:
     void addLight(const Light& light);
 
     const std::vector<std::shared_ptr<SceneObject>>& objects() const;
+    std::size_t objectCount() const;
+    std::shared_ptr<SceneObject> getObjectById(std::uint32_t id) const;
     const std::vector<std::shared_ptr<Camera>>& cameras() const;
     const std::vector<std::shared_ptr<Light>>& lights() const;
 
@@ -36,6 +39,7 @@ public:
 
 private:
     std::vector<std::shared_ptr<SceneObject>> objects_;
+    std::uint32_t nextObjectId_;
     std::vector<std::shared_ptr<Camera>> cameras_;
     std::vector<std::shared_ptr<Light>> lights_;
     std::size_t activeCameraIndex_;

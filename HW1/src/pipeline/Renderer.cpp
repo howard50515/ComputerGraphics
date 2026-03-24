@@ -81,7 +81,7 @@ const Framebuffer& Renderer::render(const Scene& scene) {
 	ctx.scene.lights.clear();
 	ctx.scene.lights.reserve(scene.lights().size());
 	for (const auto& light : scene.lights()) {
-		if (light) {
+		if (light && light->visible) {
 			ctx.scene.lights.push_back(*light);
 		}
 	}
@@ -90,7 +90,7 @@ const Framebuffer& Renderer::render(const Scene& scene) {
 	ctx.transform.projection = scene.activeCamera().getProjectionMatrix();
 
 	for (const auto& object : scene.objects()) {
-		if (!object || !object->material()) {
+		if (!object || !object->visible() || !object->material()) {
 			continue;
 		}
 		Material* material = object->material().get();
@@ -107,11 +107,11 @@ const Framebuffer& Renderer::render(const Scene& scene) {
 				v[i] = material->vertexShader(inputVertices[i], tri.frontColor, tri.backColor, ctx);
 			}
 
-			if (!IsTriangleFacingCamera(v, ctx.scene.cameraPosition)) {
-				const auto geometryEnd = Clock::now();
-				geometryMsAccum += std::chrono::duration<float, std::milli>(geometryEnd - geometryStart).count();
-				continue;
-			}
+			// if (!IsTriangleFacingCamera(v, ctx.scene.cameraPosition)) {
+			// 	const auto geometryEnd = Clock::now();
+			// 	geometryMsAccum += std::chrono::duration<float, std::milli>(geometryEnd - geometryStart).count();
+			// 	continue;
+			// }
 
 			material->prepareTriangle(v, ctx);
 

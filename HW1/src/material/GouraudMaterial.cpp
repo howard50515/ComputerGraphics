@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "config/LightingSettings.h"
 #include "math/MathUtils.h"
 
 namespace hw1 {
@@ -11,9 +12,10 @@ namespace {
 
 Color EvaluatePhongLighting(const Vector3& normal, const Vector3& worldPosition, const Color& baseColorIn, const UniformContext& ctx) {
 	const Vector3 baseColor(baseColorIn.r, baseColorIn.g, baseColorIn.b);
-	const float ambientStrength = 0.15f;
-	const float specularStrength = 0.35f;
-	const float shininess = 32.0f;
+	const LightingSettings& settings = GlobalLightingSettingsConst();
+	const float ambientStrength = settings.ambientStrength;
+	const float specularStrength = settings.specularStrength;
+	const float shininess = settings.shininess;
 
 	const Vector3 n = Normalize(normal);
 	const Vector3 viewDir = Normalize(ctx.scene.cameraPosition - worldPosition);

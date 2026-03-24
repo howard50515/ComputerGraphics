@@ -15,7 +15,7 @@ Slider::Slider(std::string id, std::string label, float minValue, float maxValue
 std::string Slider::renderHtml(const std::string& extraInputAttributes) const {
 	std::string html;
 	html.reserve(256);
-	html += "<div class='sliderRow'><label for='";
+	html += "<div class='sliderRow' style='max-width: 300px;'><label for='";
 	html += id_;
 	html += "'>";
 	html += label_;
